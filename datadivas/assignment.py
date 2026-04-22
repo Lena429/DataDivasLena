@@ -263,27 +263,36 @@ def build_report(assignments: Dict[str, Optional[str]]) -> str:
     return "\n".join(rows)
 
 
-def calculate_match_quality(assignments: Dict[str, Optional[str]], student_rankings: Dict[str, List[str]]) -> float:
-    """Calculate the average match quality of assignments against student rankings.
-
-    For each student, determines the rank of their assigned project in their preference list.
-    If a student is unassigned or their assigned project is not in their rankings,
-    they receive a penalty rank equal to the length of their rankings plus one.
+def calculate_match_quality(assignments, student_rankings):
+    """Calculate the percentage of students who got their 1st, 2nd, and 3rd choices.
 
     Args:
         assignments: Dictionary mapping student names to assigned project names (or None).
         student_rankings: Dictionary mapping student names to their ranked list of projects.
 
     Returns:
-        The average rank across all students (lower is better, with 1.0 being perfect match).
+        A formatted string with the percentages for 1st, 2nd, and 3rd choices.
     """
-    total_quality = 0.0
-    num_students = len(assignments)
+    first_choice = 0
+    second_choice = 0
+    third_choice = 0
+    total_assigned = 0
     for student, assigned in assignments.items():
+        if assigned is None:
+            continue
         rankings = student_rankings.get(student, [])
-        if assigned is None or assigned not in rankings:
-            rank = len(rankings) + 1
-        else:
+        if assigned in rankings:
             rank = rankings.index(assigned) + 1
-        total_quality += rank
-    return total_quality / num_students if num_students > 0 else 0.0
+            if rank == 1:
+                first_choice += 1
+            elif rank == 2:
+                second_choice += 1
+            elif rank == 3:
+                third_choice += 1
+        total_assigned += 1
+    if total_assigned == 0:
+        return "No students assigned."
+    first_pct = (first_choice / total_assigned) * 100
+    second_pct = (second_choice / total_assigned) * 100
+    third_pct = (third_choice / total_assigned) * 100
+    return f"1st choice: {first_pct:.1f}%, 2nd choice: {second_pct:.1f}%, 3rd choice: {third_pct:.1f}%"
