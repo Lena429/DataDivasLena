@@ -308,6 +308,7 @@ def main():
             assignments = result.get("assignments", {})
             student_majors = result.get("student_majors", {})
             project_compositions = result.get("project_compositions", {})
+            project_interest = result.get("project_interest", {})
             
             # Build dataframe for assignments
             assignment_data = []
@@ -342,17 +343,20 @@ def main():
             composition_data = []
             for project in sorted(project_compositions.keys()):
                 comp = project_compositions[project]
+                interest = project_interest.get(project, 0)
                 if comp:
                     total = sum(comp.values())
                     comp_str = ", ".join(f"{m}: {c}" for m, c in sorted(comp.items()))
                     composition_data.append({
                         "Project": project,
+                        "Students Interested": interest,
                         "Total": total,
                         "Composition": comp_str,
                     })
                 else:
                     composition_data.append({
                         "Project": project,
+                        "Students Interested": interest,
                         "Total": 0,
                         "Composition": "Empty",
                     })
