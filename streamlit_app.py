@@ -17,6 +17,7 @@ from datadivas.assignment import (
     get_rank,
     parse_projects,
     parse_student_rankings,
+    run_diagnostics,
 )
 
 # Sample data for demonstration
@@ -41,6 +42,12 @@ def init_session_state():
         st.session_state.last_students = {}
     if "assignment_run" not in st.session_state:
         st.session_state.assignment_run = False
+    if "admin_access" not in st.session_state:
+        st.session_state.admin_access = False
+    if "diagnostics_run" not in st.session_state:
+        st.session_state.diagnostics_run = False
+    if "diagnostics_result" not in st.session_state:
+        st.session_state.diagnostics_result = None
 
 
 def parse_csv_file(uploaded_file, file_type: str) -> str:
@@ -236,6 +243,22 @@ def main():
         - Each student can only be assigned to one project
         - Each project can only have students from its allowed majors
         """)
+        
+        # Admin Access Panel
+        st.divider()
+        st.subheader("🔐 Admin Access")
+        admin_password = st.text_input(
+            "Admin Access",
+            type="password",
+            label_visibility="collapsed",
+            placeholder="Enter admin password"
+        )
+        
+        if admin_password == "datadivas_admin":
+            st.session_state.admin_access = True
+            st.success("✅ Admin access granted")
+        else:
+            st.session_state.admin_access = False
     
     # Create two columns for input
     col1, col2 = st.columns(2)
@@ -345,6 +368,39 @@ def main():
                 mime="text/csv",
                 use_container_width=True,
             )
+    
+    # Admin Panel - System Diagnostics
+    if st.session_state.admin_access:
+        st.divider()
+        st.subheader("🔧 System Diagnostics")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("Run the comprehensive unit test suite to validate assignment logic.")
+        
+        with col2:
+            if st.button("▶️ Run System Diagnostics", use_container_width=True, key="diagnostics_button"):
+                try:
+                    with st.spinner("Running diagnostics..."):
+                        all_passed, output = run_diagnostics()
+                    
+                    st.session_state.diagnostics_run = True
+                    st.session_state.diagnostics_result = (all_passed, output)
+                    
+                except Exception as e:
+                    st.error(f"❌ Error running diagnostics: {str(e)}")
+        
+        # Display results if available
+        if st.session_state.diagnostics_run and st.session_state.diagnostics_result:
+            all_passed, output = st.session_state.diagnostics_result
+            if all_passed:
+                st.success("✅ All tests passed successfully!")
+            else:
+                st.error("❌ Some tests failed. See details below.")
+            
+            st.markdown("**Technical Output:**")
+            st.code(output, language="text")
+    
     
     # Display Results
     if st.session_state.assignment_run and st.session_state.last_result:

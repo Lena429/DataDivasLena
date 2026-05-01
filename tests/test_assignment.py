@@ -104,6 +104,103 @@ class AssignmentTests(unittest.TestCase):
         with self.assertRaises(AssignmentError):
             assign_students_to_projects(students, projects)
 
+    def test_nixing_rule_projects_below_min_capacity(self):
+        """Test that projects with < 4 students assigned are set to 0 (empty).
+        
+        The nixing rule ensures that projects are either inactive (0 students)
+        or active with between 4 and their capacity. This prevents teams that
+        are too small to be viable.
+        """
+        students = {
+            "Alice": {"rankings": ["Project X"], "major": "CS"},
+            "Bob": {"rankings": ["Project X"], "major": "CS"},
+            "Carmen": {"rankings": ["Project X"], "major": "CS"},
+        }
+        projects = {
+            "Project X": {"capacity": 6, "allowed_majors": ["CS"]},
+        }
+        result = assign_students_to_projects(students, projects)
+        project_compositions = result['project_compositions']
+        # All students want Project X but only 3 are available
+        # The nixing rule should result in Project X being empty (0 students)
+        self.assertEqual(project_compositions["Project X"], {})
+
+    def test_major_constraint_prevents_ineligible_assignment(self):
+        """Test that students are never assigned to projects that don't list their major.
+        
+        Major eligibility is a hard constraint - students can only be assigned
+        to projects that explicitly allow their major.
+        """
+        students = {
+            "Alice": {"rankings": ["Project X", "Project Y"], "major": "CS"},
+            "Bob": {"rankings": ["Project X", "Project Y"], "major": "EE"},
+            "Carmen": {"rankings": ["Project X", "Project Y"], "major": "CpE"},
+            "Diana": {"rankings": ["Project X", "Project Y"], "major": "CS"},
+        }
+        projects = {
+            "Project X": {"capacity": 4, "allowed_majors": ["CS", "EE"]},
+            "Project Y": {"capacity": 4, "allowed_majors": ["CpE", "CS"]},
+        }
+        result = assign_students_to_projects(students, projects)
+        assignments = result['assignments']
+        
+        # Bob (EE) cannot be assigned to Project Y (only CpE, CS allowed)
+        if assignments["Bob"] is not None:
+            self.assertIn(assignments["Bob"], ["Project X"])
+        
+        # Carmen (CpE) cannot be assigned to Project X (only CS, EE allowed)
+        if assignments["Carmen"] is not None:
+            self.assertIn(assignments["Carmen"], ["Project Y"])
+
+    def test_data_sanitization_duplicate_rankings(self):
+        """Test that duplicate rankings are rejected with a clear error.
+        
+        Students cannot rank the same project multiple times.
+        """
+        text = "Alice (CS): Project A, Project B, Project A"
+        with self.assertRaises(AssignmentError):
+            parse_student_rankings(text)
+
+    def test_data_sanitization_trailing_spaces_in_project_names(self):
+        """Test that trailing spaces in project names are normalized.
+        
+        The parser should strip leading/trailing whitespace from project names
+        to handle input inconsistencies.
+        """
+        text = "Project A  ,4,CS\nProject B ,5,EE"
+        result = parse_projects(text)
+        # Names should be trimmed
+        self.assertIn("Project A", result)
+        self.assertIn("Project B", result)
+        # Should not have spaces
+        self.assertNotIn("Project A  ", result)
+        self.assertNotIn("Project B ", result)
+
+    def test_data_sanitization_trailing_spaces_in_student_input(self):
+        """Test that trailing spaces in student rankings are normalized.
+        
+        Student names, majors, and project choices should be trimmed.
+        """
+        text = "Alice (CS) : Project A , Project B \nBob (CpE): Project B "
+        result = parse_student_rankings(text)
+        # Check that rankings are trimmed
+        self.assertEqual(result["Alice"]["rankings"], ["Project A", "Project B"])
+        self.assertEqual(result["Bob"]["rankings"], ["Project B"])
+
+    def test_data_sanitization_lowercase_major_rejection(self):
+        """Test that lowercase majors in input are rejected.
+        
+        Majors must be exactly 'CS', 'CpE', or 'EE' - lowercase variants
+        should be rejected during parsing.
+        """
+        # Lowercase major in project definition should fail
+        with self.assertRaises(AssignmentError):
+            parse_projects("Project A,4,cs,cpe")
+        
+        # Lowercase major in student rankings should fail
+        with self.assertRaises(AssignmentError):
+            parse_student_rankings("Alice (cs): Project A")
+
 
 if __name__ == "__main__":
     unittest.main()
