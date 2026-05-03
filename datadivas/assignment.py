@@ -434,11 +434,20 @@ def run_diagnostics():
     """Run the unit test suite and return results.
     
     Returns:
-        Tuple of (all_passed: bool, output: str)
+        Tuple of (all_passed: bool, output: str, test_results: list[tuple[str, str, str]])
     """
     import unittest
     import sys
     from io import StringIO
+    
+    def flatten_suite(test_suite):
+        tests = []
+        for item in test_suite:
+            if isinstance(item, unittest.TestSuite):
+                tests.extend(flatten_suite(item))
+            else:
+                tests.append(item)
+        return tests
     
     # Capture stdout
     old_stdout = sys.stdout
@@ -453,7 +462,18 @@ def run_diagnostics():
         
         output = captured_output.getvalue()
         all_passed = result.wasSuccessful()
-        
-        return all_passed, output
+
+        failure_dict = {test.id(): tb for test, tb in result.failures + result.errors}
+        all_tests = flatten_suite(suite)
+        test_results = []
+        for test in all_tests:
+            test_id = test.id()
+            test_name = test_id.split('.')[-1]
+            if test_id in failure_dict:
+                test_results.append((test_name, '❌', failure_dict[test_id]))
+            else:
+                test_results.append((test_name, '✅', ''))
+
+        return all_passed, output, test_results
     finally:
         sys.stdout = old_stdout

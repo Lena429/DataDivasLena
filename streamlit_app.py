@@ -383,63 +383,34 @@ def main():
             if st.button("▶️ Run System Diagnostics", use_container_width=True, key="diagnostics_button"):
                 try:
                     with st.spinner("Running diagnostics..."):
-                        all_passed, output = run_diagnostics()
+                        all_passed, output, test_results = run_diagnostics()
                     
                     st.session_state.diagnostics_run = True
-                    st.session_state.diagnostics_result = (all_passed, output)
+                    st.session_state.diagnostics_result = (all_passed, output, test_results)
                     
                 except Exception as e:
                     st.error(f"❌ Error running diagnostics: {str(e)}")
         
         # Display results if available
         if st.session_state.diagnostics_run and st.session_state.diagnostics_result:
-            all_passed, output = st.session_state.diagnostics_result
+            all_passed, output, test_results = st.session_state.diagnostics_result
             if all_passed:
                 st.success("✅ All tests passed successfully!")
             else:
                 st.error("❌ Some tests failed. See details below.")
             
-            # Parse the output
+            # Parse timing from output only
             lines = output.split('\n')
-            total_tests = 0
-            passed = 0
             execution_time = 0.0
             large_scale_time = None
-            test_results = []
-            current_test = None
-            current_traceback = []
-            
             for line in lines:
                 line = line.strip()
-                # Use regex for safe parsing
                 match = re.search(r'Ran (\d+) tests in ([\d.]+)s', line)
                 if match:
                     try:
-                        total_tests = int(match.group(1))
                         execution_time = float(match.group(2))
                     except (ValueError, IndexError):
                         execution_time = 0.0
-                elif line == 'OK':
-                    passed = total_tests
-                elif line.startswith('FAIL: ') or line.startswith('ERROR: '):
-                    if current_test:
-                        test_results.append((current_test, '❌', '\n'.join(current_traceback)))
-                    # Parse test_name from "FAIL: test_name (class)"
-                    try:
-                        test_part = line.split(': ', 1)[1]
-                        test_name = test_part.split(' (')[0]
-                        current_test = test_name
-                        current_traceback = []
-                    except IndexError:
-                        current_test = line  # fallback
-                        current_traceback = []
-                elif line.startswith('test_'):
-                    # For passed tests
-                    if ' ... ok' in line:
-                        test_name = line.split(' ... ')[0]
-                        test_results.append((test_name, '✅', ''))
-                elif current_test and (line.startswith('Traceback') or line.startswith('    ') or line.startswith('File ')):
-                    current_traceback.append(line)
                 elif 'STRESS_TEST_TIME:' in line:
                     match = re.search(r'STRESS_TEST_TIME: ([\d.]+)s', line)
                     if match:
@@ -447,9 +418,9 @@ def main():
                             large_scale_time = float(match.group(1))
                         except (ValueError, IndexError):
                             large_scale_time = 'N/A'
-            
-            if current_test:
-                test_results.append((current_test, '❌', '\n'.join(current_traceback)))
+
+            total_tests = len(test_results)
+            passed = sum(1 for _, status, _ in test_results if status == '✅')
             
             # Summary Cards
             col1, col2, col3 = st.columns(3)
@@ -479,8 +450,7 @@ def main():
                         st.markdown(f"{status} {test_name}")
                         st.code(traceback, language="text")
                     else:
-                        st.markdown(f"{status} {test_name}")
-    
+                        st.markdown(f"{status} {test_name}")    
     
     # Display Results
     if st.session_state.assignment_run and st.session_state.last_result:
