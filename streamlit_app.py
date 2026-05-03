@@ -433,10 +433,16 @@ def main():
                         current_traceback = []
                 elif current_test and (line.startswith('Traceback') or line.startswith('    ') or line.startswith('File ')):
                     current_traceback.append(line)
-                elif 'Large scale assignment took' in line:
-                    # Extract time
-                    parts = line.split()
-                    large_scale_time = float(parts[4])
+                elif 'LATENCY:' in line:
+                    try:
+                        parts = line.split()
+                        if len(parts) >= 2:
+                            time_str = parts[1]
+                            large_scale_time = float(time_str)
+                        else:
+                            large_scale_time = 'N/A'
+                    except (ValueError, IndexError):
+                        large_scale_time = 'N/A'
             
             if current_test:
                 test_results.append((current_test, '❌', '\n'.join(current_traceback)))
@@ -452,7 +458,11 @@ def main():
             
             # Performance Indicator for large scale
             if large_scale_time is not None:
-                st.metric("Large Scale Test Time", f"{large_scale_time:.2f}s", delta=f"{'✅' if large_scale_time < 5 else '❌'} Under 5s")
+                if isinstance(large_scale_time, float):
+                    delta = '✅' if large_scale_time < 5 else '❌'
+                    st.metric("Large Scale Test Time", f"{large_scale_time:.2f}s", delta=f"{delta} Under 5s")
+                else:
+                    st.metric("Large Scale Test Time", large_scale_time)
             
             # Test Results
             st.subheader("Test Results")
