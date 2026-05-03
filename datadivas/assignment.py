@@ -429,39 +429,31 @@ def calculate_match_quality(result, student_data):
     third_pct = (third_choice / total_assigned) * 100
     return f"1st choice: {first_pct:.1f}%, 2nd choice: {second_pct:.1f}%, 3rd choice: {third_pct:.1f}%"
 
-def run_diagnostics() -> tuple[bool, str]:
-    """Run the unit test suite and return results as a string.
-    
-    This function executes all unit tests from the tests module and captures
-    the output for display in the Streamlit UI. Useful for validating the
-    assignment logic in a production environment.
+
+def run_diagnostics():
+    """Run the unit test suite and return results.
     
     Returns:
-        A tuple of (all_tests_passed: bool, output: str)
-        - all_tests_passed: True if all tests passed, False otherwise
-        - output: The complete unittest output including test results and any errors
-        
-    Raises:
-        Exception: If there's an error loading or running the tests.
+        Tuple of (all_passed: bool, output: str)
     """
     import unittest
+    import sys
     from io import StringIO
     
-    # Create a test loader and discover all tests
-    loader = unittest.TestLoader()
-    suite = loader.discover('tests', pattern='test_*.py')
+    # Capture stdout
+    old_stdout = sys.stdout
+    sys.stdout = captured_output = StringIO()
     
-    # Create a StringIO buffer to capture output
-    stream = StringIO()
-    runner = unittest.TextTestRunner(stream=stream, verbosity=2)
-    
-    # Run the tests
-    result = runner.run(suite)
-    
-    # Get the output
-    output = stream.getvalue()
-    
-    # Determine if all tests passed
-    all_passed = result.wasSuccessful()
-    
-    return all_passed, output
+    try:
+        # Load and run tests
+        loader = unittest.TestLoader()
+        suite = loader.discover('tests', pattern='test_*.py')
+        runner = unittest.TextTestRunner(verbosity=2, stream=captured_output)
+        result = runner.run(suite)
+        
+        output = captured_output.getvalue()
+        all_passed = result.wasSuccessful()
+        
+        return all_passed, output
+    finally:
+        sys.stdout = old_stdout

@@ -217,22 +217,6 @@ def main():
     
     # Sidebar for theme info and instructions
     with st.sidebar:
-        # Admin Access Panel - at top of sidebar
-        st.subheader("🔐 Admin Access")
-        admin_password = st.text_input(
-            "Admin Access",
-            type="password",
-            label_visibility="collapsed",
-            placeholder="Enter admin password"
-        )
-        
-        if admin_password == "datadivas_admin":
-            st.session_state.admin_access = True
-            st.success("✅ Admin access granted")
-        else:
-            st.session_state.admin_access = False
-        
-        st.divider()
         st.header("Instructions")
         st.markdown("""
         1. **Define the Projects**
@@ -259,6 +243,22 @@ def main():
         - Each student can only be assigned to one project
         - Each project can only have students from its allowed majors
         """)
+        
+        # Admin Access Panel
+        st.divider()
+        st.subheader("🔐 Admin Access")
+        admin_password = st.text_input(
+            "Admin Access",
+            type="password",
+            label_visibility="collapsed",
+            placeholder="Enter admin password"
+        )
+        
+        if admin_password == "datadivas_admin":
+            st.session_state.admin_access = True
+            st.success("✅ Admin access granted")
+        else:
+            st.session_state.admin_access = False
     
     # Create two columns for input
     col1, col2 = st.columns(2)
@@ -369,7 +369,99 @@ def main():
                 use_container_width=True,
             )
     
-
+    # Admin Panel - System Diagnostics
+    if st.session_state.admin_access:
+        st.divider()
+        st.subheader("🔧 System Diagnostics")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.markdown("Run the comprehensive unit test suite to validate assignment logic.")
+        
+        with col2:
+            if st.button("▶️ Run System Diagnostics", use_container_width=True, key="diagnostics_button"):
+                try:
+                    with st.spinner("Running diagnostics..."):
+                        all_passed, output = run_diagnostics()
+                    
+                    st.session_state.diagnostics_run = True
+                    st.session_state.diagnostics_result = (all_passed, output)
+                    
+                except Exception as e:
+                    st.error(f"❌ Error running diagnostics: {str(e)}")
+        
+        # Display results if available
+        if st.session_state.diagnostics_run and st.session_state.diagnostics_result:
+            all_passed, output = st.session_state.diagnostics_result
+            if all_passed:
+                st.success("✅ All tests passed successfully!")
+            else:
+                st.error("❌ Some tests failed. See details below.")
+            
+            # Parse the output
+            lines = output.split('\n')
+            total_tests = 0
+            passed = 0
+            execution_time = 0.0
+            large_scale_time = None
+            test_results = []
+            current_test = None
+            current_traceback = []
+            
+            for line in lines:
+                line = line.strip()
+                if line.startswith('Ran '):
+                    # "Ran 11 tests in 2.345s"
+                    parts = line.split()
+                    total_tests = int(parts[1])
+                    execution_time = float(parts[3].rstrip('s'))
+                elif line == 'OK':
+                    passed = total_tests
+                elif line.startswith('FAIL: ') or line.startswith('ERROR: '):
+                    if current_test:
+                        test_results.append((current_test, '❌', '\n'.join(current_traceback)))
+                    current_test = line
+                    current_traceback = []
+                elif line.startswith('test_'):
+                    # Test name like "test_parse_projects_valid (tests.test_assignment.AssignmentTests) ... ok"
+                    if ' ... ok' in line:
+                        test_name = line.split(' ... ')[0]
+                        test_results.append((test_name, '✅', ''))
+                    elif ' ... FAIL' in line or ' ... ERROR' in line:
+                        test_name = line.split(' ... ')[0]
+                        current_test = test_name
+                        current_traceback = []
+                elif current_test and (line.startswith('Traceback') or line.startswith('    ') or line.startswith('File ')):
+                    current_traceback.append(line)
+                elif 'Large scale assignment took' in line:
+                    # Extract time
+                    parts = line.split()
+                    large_scale_time = float(parts[4])
+            
+            if current_test:
+                test_results.append((current_test, '❌', '\n'.join(current_traceback)))
+            
+            # Summary Cards
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Total Tests", total_tests)
+            with col2:
+                st.metric("Passed", passed)
+            with col3:
+                st.metric("Execution Time", f"{execution_time:.2f}s")
+            
+            # Performance Indicator for large scale
+            if large_scale_time is not None:
+                st.metric("Large Scale Test Time", f"{large_scale_time:.2f}s", delta=f"{'✅' if large_scale_time < 5 else '❌'} Under 5s")
+            
+            # Test Results
+            st.subheader("Test Results")
+            for test_name, status, traceback in test_results:
+                if traceback:
+                    with st.expander(f"{status} {test_name}"):
+                        st.code(traceback, language="text")
+                else:
+                    st.write(f"{status} {test_name}")
     
     
     # Display Results
@@ -450,38 +542,6 @@ def main():
         st.subheader("📋 Full Assignment Report")
         report = build_report(result)
         st.text(report)
-    
-    # System Diagnostics - at bottom of main page, visible only to admin users
-    if st.session_state.admin_access:
-        st.divider()
-        st.subheader("🔧 System Diagnostics")
-        
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.markdown("Run the comprehensive unit test suite to validate assignment logic.")
-        
-        with col2:
-            if st.button("▶️ Run System Diagnostics", use_container_width=True, key="diagnostics_button"):
-                try:
-                    with st.spinner("Running diagnostics..."):
-                        all_passed, output = run_diagnostics()
-                    
-                    st.session_state.diagnostics_run = True
-                    st.session_state.diagnostics_result = (all_passed, output)
-                    
-                except Exception as e:
-                    st.error(f"❌ Error running diagnostics: {str(e)}")
-        
-        # Display results if available
-        if st.session_state.diagnostics_run and st.session_state.diagnostics_result:
-            all_passed, output = st.session_state.diagnostics_result
-            if all_passed:
-                st.success("✅ All tests passed successfully!")
-            else:
-                st.error("❌ Some tests failed. See details below.")
-            
-            st.markdown("**Technical Output:**")
-            st.code(output, language="text")
 
 
 if __name__ == "__main__":
