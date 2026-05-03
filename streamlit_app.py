@@ -424,17 +424,20 @@ def main():
                 elif line.startswith('FAIL: ') or line.startswith('ERROR: '):
                     if current_test:
                         test_results.append((current_test, '❌', '\n'.join(current_traceback)))
-                    current_test = line
-                    current_traceback = []
+                    # Parse test_name from "FAIL: test_name (class)"
+                    try:
+                        test_part = line.split(': ', 1)[1]
+                        test_name = test_part.split(' (')[0]
+                        current_test = test_name
+                        current_traceback = []
+                    except IndexError:
+                        current_test = line  # fallback
+                        current_traceback = []
                 elif line.startswith('test_'):
-                    # Test name like "test_parse_projects_valid (tests.test_assignment.AssignmentTests) ... ok"
+                    # For passed tests
                     if ' ... ok' in line:
                         test_name = line.split(' ... ')[0]
                         test_results.append((test_name, '✅', ''))
-                    elif ' ... FAIL' in line or ' ... ERROR' in line:
-                        test_name = line.split(' ... ')[0]
-                        current_test = test_name
-                        current_traceback = []
                 elif current_test and (line.startswith('Traceback') or line.startswith('    ') or line.startswith('File ')):
                     current_traceback.append(line)
                 elif 'STRESS_TEST_TIME:' in line:
