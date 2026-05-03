@@ -383,11 +383,17 @@ def main():
             if st.button("▶️ Run System Diagnostics", use_container_width=True, key="diagnostics_button"):
                 try:
                     with st.spinner("Running diagnostics..."):
-                        all_passed, output, test_results = run_diagnostics()
-                    
+                        diagnostics_result = run_diagnostics()
+
+                    if len(diagnostics_result) == 3:
+                        all_passed, output, test_results = diagnostics_result
+                    else:
+                        all_passed, output = diagnostics_result
+                        test_results = []
+
                     st.session_state.diagnostics_run = True
                     st.session_state.diagnostics_result = (all_passed, output, test_results)
-                    
+
                 except Exception as e:
                     st.error(f"❌ Error running diagnostics: {str(e)}")
         
@@ -420,7 +426,7 @@ def main():
                             large_scale_time = 'N/A'
 
             total_tests = len(test_results)
-            passed = sum(1 for _, status, _ in test_results if status == '✅')
+            passed = sum(1 for result in test_results if result['passed'])
             
             # Summary Cards
             col1, col2, col3 = st.columns(3)
@@ -443,14 +449,13 @@ def main():
             st.subheader("Test Results")
             st.write(f"Total tests parsed: {len(test_results)}")
             # Sort alphabetically
-            test_results.sort(key=lambda x: x[0])
+            test_results.sort(key=lambda x: x['name'])
             with st.expander("View Detailed Test Logs", expanded=True):
-                for test_name, status, traceback in test_results:
-                    if traceback:
-                        st.markdown(f"{status} {test_name}")
-                        st.code(traceback, language="text")
-                    else:
-                        st.markdown(f"{status} {test_name}")    
+                for result in test_results:
+                    status = '✅' if result['passed'] else '❌'
+                    st.markdown(f"{status} {result['name']}")
+                    if not result['passed'] and result.get('traceback'):
+                        st.code(result['traceback'], language="text")    
     
     # Display Results
     if st.session_state.assignment_run and st.session_state.last_result:

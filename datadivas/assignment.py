@@ -434,7 +434,7 @@ def run_diagnostics():
     """Run the unit test suite and return results.
     
     Returns:
-        Tuple of (all_passed: bool, output: str, test_results: list[tuple[str, str, str]])
+        Tuple of (all_passed: bool, output: str, test_results: list[dict])
     """
     import unittest
     import sys
@@ -469,10 +469,11 @@ def run_diagnostics():
         for test in all_tests:
             test_id = test.id()
             test_name = test_id.split('.')[-1]
-            if test_id in failure_dict:
-                test_results.append((test_name, '❌', failure_dict[test_id]))
-            else:
-                test_results.append((test_name, '✅', ''))
+            test_results.append({
+                'name': test_name,
+                'passed': test_id not in failure_dict,
+                'traceback': failure_dict.get(test_id, ''),
+            })
 
         return all_passed, output, test_results
     finally:
