@@ -434,7 +434,7 @@ def run_diagnostics():
     """Run the unit test suite and return results.
     
     Returns:
-        Tuple of (all_passed: bool, output: str, test_results: list[dict])
+        Tuple of (all_passed: bool, output: str, passed_names: list[str], failed_names: list[str])
     """
     import unittest
     import sys
@@ -463,36 +463,33 @@ def run_diagnostics():
         output = captured_output.getvalue()
         all_passed = result.wasSuccessful()
 
-        failure_dict = {}
-        for test, tb in result.failures + result.errors:
+        failure_ids = set()
+        for test, _ in result.failures + result.errors:
             if test is not None and hasattr(test, 'id'):
                 try:
-                    failure_dict[test.id()] = tb
+                    failure_ids.add(test.id())
                 except Exception:
                     continue
 
         all_tests = flatten_suite(suite)
-        test_results = []
+        passed_names = []
+        failed_names = []
         for test in all_tests:
-            if test is None or not hasattr(test, 'id'):
-                test_name = 'Unknown Test'
-                passed = False
-                traceback = ''
-            else:
+            test_name = 'Unknown Test'
+            test_id = None
+            if test is not None and hasattr(test, 'id'):
                 try:
                     test_id = test.id()
+                    if isinstance(test_id, str) and test_id:
+                        test_name = test_id.split('.')[-1]
                 except Exception:
                     test_id = None
-                test_name = test_id.split('.')[-1] if isinstance(test_id, str) and test_id else 'Unknown Test'
-                passed = test_id not in failure_dict if test_id else False
-                traceback = failure_dict.get(test_id, '') if test_id else ''
 
-            test_results.append({
-                'name': test_name,
-                'passed': passed,
-                'traceback': traceback,
-            })
+            if test_id in failure_ids:
+                failed_names.append(test_name)
+            else:
+                passed_names.append(test_name)
 
-        return all_passed, output, test_results
+        return all_passed, output, passed_names, failed_names
     finally:
         sys.stdout = old_stdout

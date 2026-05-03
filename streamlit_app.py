@@ -385,21 +385,22 @@ def main():
                     with st.spinner("Running diagnostics..."):
                         diagnostics_result = run_diagnostics()
 
-                    if len(diagnostics_result) == 3:
-                        all_passed, output, test_results = diagnostics_result
+                    if len(diagnostics_result) == 4:
+                        all_passed, output, passed_names, failed_names = diagnostics_result
                     else:
                         all_passed, output = diagnostics_result
-                        test_results = []
+                        passed_names = []
+                        failed_names = []
 
                     st.session_state.diagnostics_run = True
-                    st.session_state.diagnostics_result = (all_passed, output, test_results)
+                    st.session_state.diagnostics_result = (all_passed, output, passed_names, failed_names)
 
                 except Exception as e:
                     st.error(f"❌ Error running diagnostics: {str(e)}")
         
         # Display results if available
         if st.session_state.diagnostics_run and st.session_state.diagnostics_result:
-            all_passed, output, test_results = st.session_state.diagnostics_result
+            all_passed, output, passed_names, failed_names = st.session_state.diagnostics_result
             if all_passed:
                 st.success("✅ All tests passed successfully!")
             else:
@@ -425,8 +426,8 @@ def main():
                         except (ValueError, IndexError):
                             large_scale_time = 'N/A'
 
-            total_tests = len(test_results)
-            passed = sum(1 for result in test_results if result['passed'])
+            total_tests = len(passed_names) + len(failed_names)
+            passed = len(passed_names)
             
             # Summary Cards
             col1, col2, col3 = st.columns(3)
@@ -447,19 +448,12 @@ def main():
             
             # Test Results
             st.subheader("Test Results")
-            st.write(f"Total tests parsed: {len(test_results)}")
-            # Sort alphabetically
-            test_results.sort(key=lambda x: x.get('name', ''))
+            st.write(f"Total tests parsed: {total_tests}")
             with st.expander("View Detailed Test Logs", expanded=True):
-                for result in test_results:
-                    test_name = result.get('name', 'Unknown Test')
-                    passed_flag = result.get('passed', False)
-                    traceback = result.get('traceback', '')
-                    status = '✅' if passed_flag else '❌'
-                    st.markdown(f"{status} {test_name}")
-                    if not passed_flag and traceback:
-                        st.code(traceback, language="text")    
-    
+                for test_name in sorted(passed_names):
+                    st.markdown(f"✅ {test_name}")
+                for test_name in sorted(failed_names):
+                    st.markdown(f"❌ {test_name}")
     # Display Results
     if st.session_state.assignment_run and st.session_state.last_result:
         st.divider()
