@@ -5,6 +5,8 @@ algorithm to ensure students are correctly matched to projects based on their
 preferences and project capacity constraints.
 """
 
+import random
+import time
 import unittest
 
 from datadivas.assignment import (
@@ -199,6 +201,53 @@ class AssignmentTests(unittest.TestCase):
         self.assertGreater(mixed_comp.get("EE", 0), 0)
         # And Project Mono might be all one major, but since diversity is penalized, solver should prefer mixed
         # The test verifies the solver selects mixed when possible
+
+
+    def test_large_scale_assignment(self):
+        """Scalability stress test for large-scale assignments."""
+        # Generate 20 projects
+        majors = ['CS', 'CpE', 'EE']
+        projects = {}
+        project_names = [f"Project {i+1}" for i in range(20)]
+        for name in project_names:
+            # Randomly select 1-3 allowed majors
+            allowed = random.sample(majors, random.randint(1, 3))
+            projects[name] = {"capacity": 6, "allowed_majors": allowed}
+
+        # Generate 100 students
+        students = {}
+        for i in range(100):
+            name = f"Student {i+1}"
+            major = random.choice(majors)
+            # Random 3 rankings from project_names
+            rankings = random.sample(project_names, 3)
+            students[name] = {"rankings": rankings, "major": major}
+
+        # Measure time
+        start_time = time.time()
+        result = assign_students_to_projects(students, projects)
+        end_time = time.time()
+        total_time = end_time - start_time
+
+        # Print time for feedback
+        print(f"Large scale assignment took {total_time:.2f} seconds")
+
+        # Assertions
+        self.assertLess(total_time, 5.0, "Assignment should complete in under 5 seconds")
+
+        # Verify Nixing Rule and Capacity Limits
+        assignments = result['assignments']
+        project_compositions = result['project_compositions']
+        for proj_name in projects:
+            comp = project_compositions.get(proj_name, {})
+            if comp:  # Active project
+                assigned_count = sum(comp.values())
+                self.assertGreaterEqual(assigned_count, 4, f"Active project {proj_name} must have at least 4 students")
+                self.assertLessEqual(assigned_count, 6, f"Project {proj_name} exceeds capacity of 6")
+            else:  # Inactive project
+                # Should have 0 students
+                assigned_students = [s for s, p in assignments.items() if p == proj_name]
+                self.assertEqual(len(assigned_students), 0, f"Inactive project {proj_name} should have no assignments")
 
 
 if __name__ == "__main__":
