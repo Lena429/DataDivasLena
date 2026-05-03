@@ -467,15 +467,16 @@ def main():
             
             # Test Results
             st.subheader("Test Results")
+            st.write(f"Total tests parsed: {len(test_results)}")
             # Sort alphabetically
             test_results.sort(key=lambda x: x[0])
             with st.expander("View Detailed Test Logs", expanded=True):
                 for test_name, status, traceback in test_results:
                     if traceback:
-                        with st.expander(f"{status} {test_name}"):
-                            st.code(traceback, language="text")
+                        st.markdown(f"{status} {test_name}")
+                        st.code(traceback, language="text")
                     else:
-                        st.write(f"{status} {test_name}")
+                        st.markdown(f"{status} {test_name}")
     
     
     # Display Results
