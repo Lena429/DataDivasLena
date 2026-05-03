@@ -128,6 +128,77 @@ class AssignmentTests(unittest.TestCase):
         with self.assertRaises(AssignmentError):
             assign_students_to_projects(students, projects)
 
+    def test_major_exclusion(self):
+        """Test that students are not assigned to projects that don't allow their major."""
+        students = {
+            "Alice": {"rankings": ["Project CS", "Project Mixed"], "major": "EE"},
+            "Bob": {"rankings": ["Project CS"], "major": "CS"},
+            "Carmen": {"rankings": ["Project CS"], "major": "CS"},
+            "Diana": {"rankings": ["Project CS"], "major": "CS"},
+            "Eve": {"rankings": ["Project CS"], "major": "CS"},
+        }
+        projects = {
+            "Project CS": {"capacity": 4, "allowed_majors": ["CS"]},
+            "Project Mixed": {"capacity": 4, "allowed_majors": ["CS", "EE"]}
+        }
+        result = assign_students_to_projects(students, projects)
+        assignments = result['assignments']
+        # Alice (EE) should not be assigned to Project CS
+        self.assertNotEqual(assignments["Alice"], "Project CS")
+        # But she can be assigned to Project Mixed or unassigned
+        self.assertTrue(assignments["Alice"] in [None, "Project Mixed"])
+
+    def test_sparse_ranking_parsing(self):
+        """Test parsing student rankings with sparse (empty) choices."""
+        text = "Alice (CS): Project A, Project B, Project C, , , "
+        result = parse_student_rankings(text)
+        expected = {
+            "Alice": {"rankings": ["Project A", "Project B", "Project C"], "major": "CS"}
+        }
+        self.assertEqual(result, expected)
+        # Now test assignment with this parsed data
+        students = result
+        projects = {
+            "Project A": {"capacity": 4, "allowed_majors": ["CS"]},
+            "Project B": {"capacity": 4, "allowed_majors": ["CS"]},
+            "Project C": {"capacity": 4, "allowed_majors": ["CS"]}
+        }
+        # Add more students to fill projects
+        students.update({
+            "Bob": {"rankings": ["Project A"], "major": "CS"},
+            "Carmen": {"rankings": ["Project A"], "major": "CS"},
+            "Diana": {"rankings": ["Project A"], "major": "CS"},
+        })
+        result_assign = assign_students_to_projects(students, projects)
+        assignments = result_assign['assignments']
+        # Alice should be assigned to one of her top 3 choices
+        self.assertIn(assignments["Alice"], ["Project A", "Project B", "Project C"])
+
+    def test_diversity_tie_breaker(self):
+        """Test that diversity penalties break ties in favor of mixed teams."""
+        students = {
+            "Alice": {"rankings": ["Project Mixed", "Project Mono"], "major": "CS"},
+            "Bob": {"rankings": ["Project Mixed", "Project Mono"], "major": "CS"},
+            "Carmen": {"rankings": ["Project Mixed", "Project Mono"], "major": "EE"},
+            "Diana": {"rankings": ["Project Mixed", "Project Mono"], "major": "EE"},
+            "Eve": {"rankings": ["Project Mixed", "Project Mono"], "major": "CS"},
+            "Frank": {"rankings": ["Project Mixed", "Project Mono"], "major": "CS"},
+            "Grace": {"rankings": ["Project Mixed", "Project Mono"], "major": "EE"},
+            "Heidi": {"rankings": ["Project Mixed", "Project Mono"], "major": "EE"},
+        }
+        projects = {
+            "Project Mixed": {"capacity": 4, "allowed_majors": ["CS", "EE"]},
+            "Project Mono": {"capacity": 4, "allowed_majors": ["CS", "EE"]}
+        }
+        result = assign_students_to_projects(students, projects)
+        assignments = result['assignments']
+        project_compositions = result['project_compositions']
+        # Check that Project Mixed has both majors
+        mixed_comp = project_compositions.get("Project Mixed", {})
+        self.assertGreater(mixed_comp.get("CS", 0), 0)
+        self.assertGreater(mixed_comp.get("EE", 0), 0)
+        # And Project Mono might be all one major, but since diversity is penalized, solver should prefer mixed
+        # The test verifies the solver selects mixed when possible
 
 
 if __name__ == "__main__":
