@@ -469,7 +469,7 @@ def main():
             st.subheader("Test Results")
             # Sort alphabetically
             test_results.sort(key=lambda x: x[0])
-            with st.container(height=300):
+            with st.expander("View Detailed Test Logs", expanded=True):
                 for test_name, status, traceback in test_results:
                     if traceback:
                         with st.expander(f"{status} {test_name}"):
