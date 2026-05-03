@@ -230,7 +230,7 @@ class AssignmentTests(unittest.TestCase):
         total_time = end_time - start_time
 
         # Print time for feedback
-        print(f"LATENCY: {total_time:.2f} seconds")
+        print(f"STRESS_TEST_TIME: {total_time:.2f}s")
 
         # Assertions
         self.assertLess(total_time, 5.0, "Assignment should complete in under 5 seconds")

@@ -8,6 +8,7 @@ ranked preferences and project capacities using OR-Tools optimization.
 import streamlit as st
 import pandas as pd
 import io
+import re
 import csv
 from datadivas.assignment import (
     AssignmentError,
@@ -410,11 +411,14 @@ def main():
             
             for line in lines:
                 line = line.strip()
-                if line.startswith('Ran '):
-                    # "Ran 11 tests in 2.345s"
-                    parts = line.split()
-                    total_tests = int(parts[1])
-                    execution_time = float(parts[3].rstrip('s'))
+                # Use regex for safe parsing
+                match = re.search(r'Ran (\d+) tests in ([\d.]+)s', line)
+                if match:
+                    try:
+                        total_tests = int(match.group(1))
+                        execution_time = float(match.group(2))
+                    except (ValueError, IndexError):
+                        execution_time = 0.0
                 elif line == 'OK':
                     passed = total_tests
                 elif line.startswith('FAIL: ') or line.startswith('ERROR: '):
@@ -433,16 +437,13 @@ def main():
                         current_traceback = []
                 elif current_test and (line.startswith('Traceback') or line.startswith('    ') or line.startswith('File ')):
                     current_traceback.append(line)
-                elif 'LATENCY:' in line:
-                    try:
-                        parts = line.split()
-                        if len(parts) >= 2:
-                            time_str = parts[1]
-                            large_scale_time = float(time_str)
-                        else:
+                elif 'STRESS_TEST_TIME:' in line:
+                    match = re.search(r'STRESS_TEST_TIME: ([\d.]+)s', line)
+                    if match:
+                        try:
+                            large_scale_time = float(match.group(1))
+                        except (ValueError, IndexError):
                             large_scale_time = 'N/A'
-                    except (ValueError, IndexError):
-                        large_scale_time = 'N/A'
             
             if current_test:
                 test_results.append((current_test, '❌', '\n'.join(current_traceback)))
