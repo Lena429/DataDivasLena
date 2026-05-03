@@ -449,13 +449,16 @@ def main():
             st.subheader("Test Results")
             st.write(f"Total tests parsed: {len(test_results)}")
             # Sort alphabetically
-            test_results.sort(key=lambda x: x['name'])
+            test_results.sort(key=lambda x: x.get('name', ''))
             with st.expander("View Detailed Test Logs", expanded=True):
                 for result in test_results:
-                    status = '✅' if result['passed'] else '❌'
-                    st.markdown(f"{status} {result['name']}")
-                    if not result['passed'] and result.get('traceback'):
-                        st.code(result['traceback'], language="text")    
+                    test_name = result.get('name', 'Unknown Test')
+                    passed_flag = result.get('passed', False)
+                    traceback = result.get('traceback', '')
+                    status = '✅' if passed_flag else '❌'
+                    st.markdown(f"{status} {test_name}")
+                    if not passed_flag and traceback:
+                        st.code(traceback, language="text")    
     
     # Display Results
     if st.session_state.assignment_run and st.session_state.last_result:

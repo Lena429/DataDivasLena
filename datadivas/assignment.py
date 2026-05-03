@@ -463,16 +463,34 @@ def run_diagnostics():
         output = captured_output.getvalue()
         all_passed = result.wasSuccessful()
 
-        failure_dict = {test.id(): tb for test, tb in result.failures + result.errors}
+        failure_dict = {}
+        for test, tb in result.failures + result.errors:
+            if test is not None and hasattr(test, 'id'):
+                try:
+                    failure_dict[test.id()] = tb
+                except Exception:
+                    continue
+
         all_tests = flatten_suite(suite)
         test_results = []
         for test in all_tests:
-            test_id = test.id()
-            test_name = test_id.split('.')[-1]
+            if test is None or not hasattr(test, 'id'):
+                test_name = 'Unknown Test'
+                passed = False
+                traceback = ''
+            else:
+                try:
+                    test_id = test.id()
+                except Exception:
+                    test_id = None
+                test_name = test_id.split('.')[-1] if isinstance(test_id, str) and test_id else 'Unknown Test'
+                passed = test_id not in failure_dict if test_id else False
+                traceback = failure_dict.get(test_id, '') if test_id else ''
+
             test_results.append({
                 'name': test_name,
-                'passed': test_id not in failure_dict,
-                'traceback': failure_dict.get(test_id, ''),
+                'passed': passed,
+                'traceback': traceback,
             })
 
         return all_passed, output, test_results
