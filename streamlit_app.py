@@ -467,12 +467,15 @@ def main():
             
             # Test Results
             st.subheader("Test Results")
-            for test_name, status, traceback in test_results:
-                if traceback:
-                    with st.expander(f"{status} {test_name}"):
-                        st.code(traceback, language="text")
-                else:
-                    st.write(f"{status} {test_name}")
+            # Sort alphabetically
+            test_results.sort(key=lambda x: x[0])
+            with st.container(height=300):
+                for test_name, status, traceback in test_results:
+                    if traceback:
+                        with st.expander(f"{status} {test_name}"):
+                            st.code(traceback, language="text")
+                    else:
+                        st.write(f"{status} {test_name}")
     
     
     # Display Results
