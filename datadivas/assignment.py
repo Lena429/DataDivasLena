@@ -1,8 +1,8 @@
 """Core assignment logic for the DataDivas project mapper.
 
-This module implements the student-to-project assignment algorithm,
-which uses a proposal-based matching model similar to stable matching.
-It includes input parsing, validation, and report generation.
+This module implements parsing, validation, scoring, and assignment using
+Google OR-Tools CP-SAT optimization. It supports project capacities,
+major eligibility, the Nixing Rule, and diversity-aware team formation.
 """
 
 from collections import deque

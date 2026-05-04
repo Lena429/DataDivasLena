@@ -2,7 +2,8 @@
 
 This module provides a web-based interface for the DataDivas project mapper,
 allowing the ECCS chair to assign students to capstone projects based on
-ranked preferences and project capacities using OR-Tools optimization.
+ranked preferences and project capacities using OR-Tools CP-SAT optimization.
+It supports text input or CSV upload for projects and student rankings.
 """
 
 import streamlit as st
@@ -337,7 +338,7 @@ def main():
             )
     
     # -------------------------------------------------------------
-    # ADMIN PANEL - SYSTEM DIAGNOSTICS (COMPLETELY REWRITTEN TO BYPASS THE AGENT)
+    # ADMIN PANEL - SYSTEM DIAGNOSTICS
     # -------------------------------------------------------------
     if st.session_state.admin_access:
         st.divider()

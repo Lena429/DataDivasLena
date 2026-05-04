@@ -1,8 +1,7 @@
 """Unit tests for the assignment module.
 
-These tests validate the parsing logic, validation rules, and the assignment
-algorithm to ensure students are correctly matched to projects based on their
-preferences and project capacity constraints.
+These tests validate parsing logic, validation rules, assignment constraints,
+and solver behavior to ensure students are matched to projects correctly.
 """
 
 import random
